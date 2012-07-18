@@ -31,6 +31,7 @@
  */
 package javasvg;
 
+import java.awt.BorderLayout;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 
@@ -42,7 +43,7 @@ public class TestSVG extends JFrame {
     private JPanel  drawPanel;
     
     public TestSVG() {
-        
+        init();
     }
     
     /**
@@ -53,6 +54,9 @@ public class TestSVG extends JFrame {
     }    
     
     private void init() {
+        drawPanel = new JPanel();
         
+        this.setLayout(new BorderLayout());
+        this.add(drawPanel, BorderLayout.CENTER);
     }
 }
