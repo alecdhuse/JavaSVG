@@ -1,0 +1,261 @@
+/*
+ * BSD License
+ * 
+ * Copyright© 2012, Alec Dhuse All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without 
+ * modification, are permitted provided that the following conditions are met:
+ * 
+ * Redistributions of source code must retain the above copyright notice, this
+ * list of conditions and the following disclaimer.
+ * 
+ * Redistributions in binary form must reproduce the above copyright notice, 
+ * this list of conditions and the following disclaimer in the documentation 
+ * and/or other materials provided with the distribution.
+ * 
+ * Neither Alec Dhuse nor the names of its
+ * contributors may be used to endorse or promote products derived from this
+ * software without specific prior written permission.
+
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" 
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE 
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE 
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE 
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF 
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN 
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
+package javasvg;
+
+import java.awt.geom.GeneralPath;
+import java.awt.geom.Rectangle2D;
+import java.util.ArrayList;
+import java.util.StringTokenizer;
+
+/**
+ *
+ * @author Alec
+ */
+public class SvgImage {
+    protected ArrayList<SvgImageGroup>    groups;
+    protected boolean                     overflowVisable;
+    protected float                       height, width;    
+    protected float                       viewBoxX, viewBoxY, viewBoxHeight, viewBoxWidth;
+    
+    public SvgImage(float height, float width) {
+        this.height          = height;
+        this.width           = width;
+        this.overflowVisable = false;
+        this.groups          = new ArrayList<SvgImageGroup>();
+    }
+    
+    /**
+     * Parses the g tag of an SVG's XML
+     * 
+     * @param graphicsXML 
+     */
+    public static SvgImageGroup parseGroup(String graphicsXML) {
+        int             start, end;
+        String          gContent, token, transform;
+        StringTokenizer st;
+        SvgImageGroup   group;
+        
+        group = new SvgImageGroup();
+        
+        if (graphicsXML.startsWith("<g") && graphicsXML.endsWith("</g>")) {            
+            gContent = graphicsXML.substring(3, graphicsXML.length() - 4);
+            st       = new StringTokenizer(gContent, "<");
+                                   
+            while (st.hasMoreTokens()) {
+                token = "<" + st.nextToken();
+                
+                if (token.startsWith("<path")) {
+                    group.addElement(parsePath(token));
+                } else if (token.startsWith("<rect")) {
+                    group.addElement(parseRectangle(token));
+                } else if (token.startsWith("<transform")) {
+                    group.setTransformXML(token);
+                }
+            }
+        }
+        
+        return group;
+    }    
+    
+    /**
+     * Adds a path to this SvgImage.
+     * 
+     * @param pathXMl
+     *          The XML of a path
+     * 
+     * @return Returns the path was parsed.
+     */
+    public static SvgImageElement parsePath(String pathXMl) {
+        float           x1, x2, x3, y1, y2, y3;
+        GeneralPath     path;
+        int             start, end;
+        String          coordinates, data, id, style, token;
+        StringTokenizer st, coordST;
+        SvgElementStyle eleStyle;
+        SvgImageElement imageElement;
+        
+        imageElement = null;
+        
+        if (pathXMl.startsWith("<path")) {
+            x1 = 0;
+            x2 = 0;
+            x3 = 0;
+            y1 = 0;
+            y2 = 0;
+            y3 = 0;
+                    
+            //get data
+            start    = pathXMl.indexOf("d=\"") + 3;
+            end      = pathXMl.indexOf("\"", start);
+            data     = pathXMl.substring(start, end);
+            
+            //get id
+            start    = pathXMl.indexOf("id=\"") + 4;
+            end      = pathXMl.indexOf("\"", start);
+            id       = pathXMl.substring(start, end);            
+            
+            //get style
+            start    = pathXMl.indexOf("style=\"") + 7;
+            end      = pathXMl.indexOf("\"", start);
+            style    = pathXMl.substring(start, end); 
+            eleStyle = SvgElementStyle.parseStyle(style);
+            
+            path         = new GeneralPath();
+            st           = new StringTokenizer(data);          
+            
+            while (st.hasMoreTokens()) {
+                token = st.nextToken();
+                
+                if (token.equals("c")) {
+                    //Bézier curve to
+                    coordinates = st.nextToken();
+                    coordST     = new StringTokenizer(coordinates, ",");
+                    x1          = Float.parseFloat(coordST.nextToken());
+                    y1          = Float.parseFloat(coordST.nextToken());                    
+                    
+                    coordinates = st.nextToken();
+                    coordST     = new StringTokenizer(coordinates, ",");
+                    x2          = Float.parseFloat(coordST.nextToken());
+                    y2          = Float.parseFloat(coordST.nextToken());
+                    
+                    coordinates = st.nextToken();
+                    coordST     = new StringTokenizer(coordinates, ",");
+                    x3          = Float.parseFloat(coordST.nextToken());
+                    y3          = Float.parseFloat(coordST.nextToken());
+                    
+                    path.curveTo(x1, y1, x2, y2, x3, y3);
+                    
+                    //set x1 and y1 to the end point of the curve this may be
+                    //used for horizontal and vertical line to
+                    x1 = x3;
+                    y1 = y2;
+                } else if (token.equals("h")) {
+                    //horizontal line to
+                    coordinates = st.nextToken();
+                    x1          = Float.parseFloat(coordinates); 
+                    
+                    path.lineTo(x1, y1);
+                } else if (token.equals("l")) {  
+                    //line to
+                    coordinates = st.nextToken();
+                    coordST     = new StringTokenizer(coordinates, ",");
+                    x1          = Float.parseFloat(coordST.nextToken());
+                    y1          = Float.parseFloat(coordST.nextToken());
+                    
+                    path.lineTo(x1, y1);
+                } else if (token.equals("m")) {
+                    //move to
+                    coordinates = st.nextToken();
+                    coordST     = new StringTokenizer(coordinates, ",");
+                    x1          = Float.parseFloat(coordST.nextToken());
+                    y1          = Float.parseFloat(coordST.nextToken());
+                    
+                    path.moveTo(x1, y1);
+                } else if (token.equals("v")) {
+                    //vertical line to
+                    coordinates = st.nextToken();
+                    y1          = Float.parseFloat(coordinates);
+                    
+                    path.lineTo(x1, y1);
+                } else if (token.equals("z")) {
+                    path.closePath();                    
+                    imageElement = new SvgImageElement(id, path, eleStyle);
+                    break;
+                }
+            }
+        } 
+        
+        return imageElement;
+    }
+    
+    /**
+     * Adds a rectangle with the given XML to this SvgImage.
+     * 
+     * @param rectangleXML
+     *          The XML tag on the rectangle.
+     * 
+     * @return Returns the parsed rectangle.
+     */
+    public static SvgImageElement parseRectangle(String rectangleXML) {
+        float           x, y, width, height;
+        int             start, end;
+        Rectangle2D     rect;
+        String          id, style;
+        SvgElementStyle rectStyle;
+        SvgImageElement imageElement;
+        
+        imageElement = null;
+        
+        if (rectangleXML.startsWith("<rect")) {
+            //read width
+            start     = rectangleXML.indexOf("width=\"") + 7;
+            end       = rectangleXML.indexOf("\"", start);
+            width     = Float.parseFloat(rectangleXML.substring(start, end));
+            
+            //read height
+            start     = rectangleXML.indexOf("height=\"") + 8;
+            end       = rectangleXML.indexOf("\"", start);
+            height    = Float.parseFloat(rectangleXML.substring(start, end));
+            
+            //read x
+            start     = rectangleXML.indexOf("x=\"") + 3;
+            end       = rectangleXML.indexOf("\"", start);
+            x         = Float.parseFloat(rectangleXML.substring(start, end));
+            
+            //read y
+            start     = rectangleXML.indexOf("y=\"") + 3;
+            end       = rectangleXML.indexOf("\"", start);
+            y         = Float.parseFloat(rectangleXML.substring(start, end));
+            
+            //read id
+            start     = rectangleXML.indexOf("id=\"") + 4;
+            end       = rectangleXML.indexOf("\"", start);
+            id        = rectangleXML.substring(start, end);
+            
+            //read style
+            start     = rectangleXML.indexOf("id=\"") + 4;
+            end       = rectangleXML.indexOf("\"", start);
+            style     = rectangleXML.substring(start, end);
+            rectStyle = SvgElementStyle.parseStyle(style);
+            
+            rect = new Rectangle2D.Float(x, y, width, height);
+            imageElement = new SvgImageElement(id, rect, rectStyle);
+        } 
+        
+        return imageElement;
+    }        
+
+    public static SvgImage parseSVG(String svgXML) {
+        
+        return null;
+    }
+}
