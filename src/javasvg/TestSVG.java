@@ -32,31 +32,94 @@
 package javasvg;
 
 import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Graphics;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 
 /**
  * This class is used for testing by drawing and SVG on a JPanel.
+ * When started a file chooser will be displayed select the SVG file to be
+ * displayed.
+ * 
  * @author Alec
  */
 public class TestSVG extends JFrame {
-    private JPanel  drawPanel;
+    private JFileChooser fc;
+    private SvgPanel     drawPanel;
     
     public TestSVG() {
         init();
+        
+        int returnVal = fc.showOpenDialog(this);
+        
+        if (returnVal == JFileChooser.APPROVE_OPTION) {
+            openSVG(fc.getSelectedFile());
+        }
+        
+        this.setSize(300, 300);
+        this.setVisible(true);
     }
     
     /**
      * @param args the command line arguments
      */
     public static void main(String[] args) {
-
+        TestSVG test = new TestSVG();
     }    
     
     private void init() {
-        drawPanel = new JPanel();
+        drawPanel = new SvgPanel();
+        fc        = new JFileChooser();
         
         this.setLayout(new BorderLayout());
         this.add(drawPanel, BorderLayout.CENTER);
+    }
+    
+    private void openSVG(File svgFile) {
+        BufferedReader br;
+        StringBuilder  xml;
+          
+        try {
+            br  = new BufferedReader(new FileReader(svgFile));
+            xml = new StringBuilder();
+            
+            while (br.ready()) {
+                xml.append(br.readLine());
+            }
+            
+            SvgImage image = SvgImage.parseSVG(xml.toString());
+            drawPanel.setImage(image);
+        } catch (Exception e) {
+            System.err.println(e);
+        }
+    }
+}
+
+class SvgPanel extends JPanel {
+    private SvgImage    image;
+    
+    public SvgPanel() {
+        super();        
+        
+        this.image = null;
+        this.setBackground(Color.WHITE);
+    }    
+    
+    @Override
+    public void paint(Graphics g) {
+        super.paint(g);
+        
+        if (image != null) {
+            image.draw(g);
+        }
+    }
+    
+    public void setImage(SvgImage image) {
+        this.image = image;
     }
 }

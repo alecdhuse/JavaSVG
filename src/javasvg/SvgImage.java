@@ -31,6 +31,8 @@
  */
 package javasvg;
 
+import java.awt.Color;
+import java.awt.Graphics;
 import java.awt.geom.GeneralPath;
 import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
@@ -54,6 +56,26 @@ public class SvgImage {
     }
     
     /**
+     * Adds a group of elements to this Image
+     * 
+     * @param group 
+     */
+    public void addGroup(SvgImageGroup group) {
+        this.groups.add(group);
+    }
+    
+    /**
+     * Draws this SVG image with the provided graphics class.
+     * 
+     * @param g 
+     */
+    public void draw(Graphics g) {
+        for (SvgImageGroup group: groups) {
+            group.draw(g);
+        }
+    }
+    
+    /**
      * Parses the g tag of an SVG's XML
      * 
      * @param graphicsXML 
@@ -71,7 +93,7 @@ public class SvgImage {
             st       = new StringTokenizer(gContent, "<");
                                    
             while (st.hasMoreTokens()) {
-                token = "<" + st.nextToken();
+                token = "<" + st.nextToken().trim();
                 
                 if (token.startsWith("<path")) {
                     group.addElement(parsePath(token));
@@ -124,33 +146,41 @@ public class SvgImage {
             id       = pathXMl.substring(start, end);            
             
             //get style
-            start    = pathXMl.indexOf("style=\"") + 7;
-            end      = pathXMl.indexOf("\"", start);
-            style    = pathXMl.substring(start, end); 
-            eleStyle = SvgElementStyle.parseStyle(style);
+            if (pathXMl.indexOf("style=\"") >= 0) {
+                start    = pathXMl.indexOf("style=\"") + 7;
+                end      = pathXMl.indexOf("\"", start);
+                style    = pathXMl.substring(start, end); 
+                eleStyle = SvgElementStyle.parseStyle(style);
+            } else {
+                //no style set fill as black as per the spec               
+                eleStyle = new SvgElementStyle();
+                eleStyle.fillColor = Color.BLACK;
+            }
             
             path         = new GeneralPath();
             st           = new StringTokenizer(data);          
+            
+            path.moveTo(0, 0);
             
             while (st.hasMoreTokens()) {
                 token = st.nextToken();
                 
                 if (token.equals("c")) {
-                    //Bézier curve to
+                    //reletive Bézier curve to
                     coordinates = st.nextToken();
                     coordST     = new StringTokenizer(coordinates, ",");
-                    x1          = Float.parseFloat(coordST.nextToken());
-                    y1          = Float.parseFloat(coordST.nextToken());                    
+                    x1          = x1 + Float.parseFloat(coordST.nextToken());
+                    y1          = y1 + Float.parseFloat(coordST.nextToken());                    
                     
                     coordinates = st.nextToken();
                     coordST     = new StringTokenizer(coordinates, ",");
-                    x2          = Float.parseFloat(coordST.nextToken());
-                    y2          = Float.parseFloat(coordST.nextToken());
+                    x2          = x1 + Float.parseFloat(coordST.nextToken());
+                    y2          = y1 + Float.parseFloat(coordST.nextToken());
                     
                     coordinates = st.nextToken();
                     coordST     = new StringTokenizer(coordinates, ",");
-                    x3          = Float.parseFloat(coordST.nextToken());
-                    y3          = Float.parseFloat(coordST.nextToken());
+                    x3          = x1 + Float.parseFloat(coordST.nextToken());
+                    y3          = y1 + Float.parseFloat(coordST.nextToken());
                     
                     path.curveTo(x1, y1, x2, y2, x3, y3);
                     
@@ -159,31 +189,31 @@ public class SvgImage {
                     x1 = x3;
                     y1 = y2;
                 } else if (token.equals("h")) {
-                    //horizontal line to
+                    //relitive horizontal line to
                     coordinates = st.nextToken();
-                    x1          = Float.parseFloat(coordinates); 
+                    x1          = x1 + Float.parseFloat(coordinates); 
                     
                     path.lineTo(x1, y1);
                 } else if (token.equals("l")) {  
                     //line to
                     coordinates = st.nextToken();
                     coordST     = new StringTokenizer(coordinates, ",");
-                    x1          = Float.parseFloat(coordST.nextToken());
-                    y1          = Float.parseFloat(coordST.nextToken());
+                    x1          = x1 + Float.parseFloat(coordST.nextToken());
+                    y1          = y1 + Float.parseFloat(coordST.nextToken());
                     
                     path.lineTo(x1, y1);
                 } else if (token.equals("m")) {
-                    //move to
+                    //relitive move to
                     coordinates = st.nextToken();
                     coordST     = new StringTokenizer(coordinates, ",");
-                    x1          = Float.parseFloat(coordST.nextToken());
-                    y1          = Float.parseFloat(coordST.nextToken());
+                    x1          = x1 + Float.parseFloat(coordST.nextToken());
+                    y1          = y1 + Float.parseFloat(coordST.nextToken());
                     
                     path.moveTo(x1, y1);
                 } else if (token.equals("v")) {
-                    //vertical line to
+                    //relitive vertical line to
                     coordinates = st.nextToken();
-                    y1          = Float.parseFloat(coordinates);
+                    y1          = y1 + Float.parseFloat(coordinates);
                     
                     path.lineTo(x1, y1);
                 } else if (token.equals("z")) {
@@ -255,7 +285,38 @@ public class SvgImage {
     }        
 
     public static SvgImage parseSVG(String svgXML) {
+        float         width, height;
+        int           start, end;
+        String        content, svgContent;
+        SvgImage      newImage;
+        SvgImageGroup newGroup;
         
-        return null;
+        start      = svgXML.indexOf("<svg") + 4;
+        end        = svgXML.indexOf("</svg>");
+        svgContent = svgXML.substring(start, end);
+                
+        //read header info
+        start   = svgContent.indexOf("width=\"") + 7;
+        end     = svgContent.indexOf("\"", start);
+        content = svgContent.substring(start, end); 
+        width   = Float.parseFloat(content);
+        
+        start   = svgContent.indexOf("height=\"") + 8;
+        end     = svgContent.indexOf("\"", start);
+        content = svgContent.substring(start, end); 
+        height  = Float.parseFloat(content);        
+        
+        newImage = new SvgImage(height, width);
+        
+        //read in groups
+        while (svgContent.indexOf("<g",   end) >= 0) {
+            start    = svgContent.indexOf("<g",   end);
+            end      = svgContent.indexOf("</g>", start) + 4;
+            content  = svgContent.substring(start, end); 
+            newGroup = parseGroup(content);
+            newImage.addGroup(newGroup);
+        }
+        
+        return newImage;
     }
 }

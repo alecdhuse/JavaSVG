@@ -156,11 +156,14 @@ public class SvgElementStyle {
         while (st.hasMoreTokens()) {
             token    = st.nextToken();
             start    = token.indexOf(":");
-            property = token.substring(0, start);
-            value    = token.substring(start);
             
-            if (property.equals("fill")) {
-                elementStyle.fillColor = SvgElementStyle.parseHexString(value);
+            if (start > 0) {
+                property = token.substring(0, start);
+                value    = token.substring(start);
+            
+                if (property.equals("fill")) {
+                    elementStyle.fillColor = SvgElementStyle.parseHexString(value);
+                }
             }
         }
         

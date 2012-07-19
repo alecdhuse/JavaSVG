@@ -31,7 +31,12 @@
  */
 package javasvg;
 
+import java.awt.Color;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
+import java.util.StringTokenizer;
 
 /**
  *
@@ -39,16 +44,56 @@ import java.util.ArrayList;
  */
 public class SvgImageGroup {
     protected ArrayList<SvgImageElement>  elements;
+    protected float                       transformX, transformY;
     
     public SvgImageGroup() {
-        elements = new ArrayList<SvgImageElement>();
+        elements   = new ArrayList<SvgImageElement>();
+        transformX = 0;
+        transformY = 0;
     }
     
     public void addElement(SvgImageElement element) {
         elements.add(element);
     }
     
-    public void setTransformXML(String transXML) {
+    public void draw(Graphics g) {
+        Color           fillColor;
+        Graphics2D      g2;
+        SvgElementStyle style;
         
+        g2 = (Graphics2D) g;
+        
+        //set transform
+        g2.translate(transformX, transformY);
+        
+        for (SvgImageElement element: elements) {
+            style = element.style;
+            
+            if (style != null) {
+                fillColor = style.fillColor;
+
+                if (fillColor != null)
+                    g2.setColor(fillColor);
+            }
+            
+            g2.fill(element.shape);       
+        }
+        
+        //reset transform
+        g2.translate(transformX * -1, transformY *-1);
+    }
+    
+    public void setTransformXML(String transXML) {
+        int             start, end;
+        String          content;
+        StringTokenizer st;
+        
+        start   = transXML.indexOf("translate(") + 10;
+        end     = transXML.indexOf(")\"", start);
+        content = transXML.substring(start, end);
+        st      = new StringTokenizer(content, ",");
+        
+        transformX = Float.parseFloat(st.nextToken());
+        transformY = Float.parseFloat(st.nextToken()); 
     }
 }
