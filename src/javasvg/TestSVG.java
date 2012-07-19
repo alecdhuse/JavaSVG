@@ -105,9 +105,8 @@ class SvgPanel extends JPanel {
     
     public SvgPanel() {
         super();        
-        
+        //this.setBackground(Color.cyan);
         this.image = null;
-        this.setBackground(Color.WHITE);
     }    
     
     @Override

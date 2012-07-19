@@ -118,6 +118,7 @@ public class SvgImage {
      */
     public static SvgImageElement parsePath(String pathXMl) {
         float           x1, x2, x3, y1, y2, y3;
+        float           x, y;
         GeneralPath     path;
         int             start, end;
         String          coordinates, data, id, style, token;
@@ -128,9 +129,12 @@ public class SvgImage {
         imageElement = null;
         
         if (pathXMl.startsWith("<path")) {
+            x  = 0;
             x1 = 0;
             x2 = 0;
             x3 = 0;
+            
+            y  = 0;
             y1 = 0;
             y2 = 0;
             y3 = 0;
@@ -169,54 +173,131 @@ public class SvgImage {
                     //reletive Bézier curve to
                     coordinates = st.nextToken();
                     coordST     = new StringTokenizer(coordinates, ",");
-                    x1          = x1 + Float.parseFloat(coordST.nextToken());
-                    y1          = y1 + Float.parseFloat(coordST.nextToken());                    
+                    x1          = x + Float.parseFloat(coordST.nextToken());
+                    y1          = y + Float.parseFloat(coordST.nextToken());                    
                     
                     coordinates = st.nextToken();
                     coordST     = new StringTokenizer(coordinates, ",");
-                    x2          = x1 + Float.parseFloat(coordST.nextToken());
-                    y2          = y1 + Float.parseFloat(coordST.nextToken());
+                    x2          = x + Float.parseFloat(coordST.nextToken());
+                    y2          = y + Float.parseFloat(coordST.nextToken());
                     
                     coordinates = st.nextToken();
                     coordST     = new StringTokenizer(coordinates, ",");
-                    x3          = x1 + Float.parseFloat(coordST.nextToken());
-                    y3          = y1 + Float.parseFloat(coordST.nextToken());
+                    x3          = x + Float.parseFloat(coordST.nextToken());
+                    y3          = y + Float.parseFloat(coordST.nextToken());
                     
                     path.curveTo(x1, y1, x2, y2, x3, y3);
                     
                     //set x1 and y1 to the end point of the curve this may be
                     //used for horizontal and vertical line to
-                    x1 = x3;
-                    y1 = y2;
+                    x = x3;
+                    y = y3;
+                } else if (token.equals("C")) {
+                    //absolute Bézier curve to
+                    coordinates = st.nextToken();
+                    coordST     = new StringTokenizer(coordinates, ",");
+                    x1          = Float.parseFloat(coordST.nextToken());
+                    y1          = Float.parseFloat(coordST.nextToken());                    
+                    
+                    coordinates = st.nextToken();
+                    coordST     = new StringTokenizer(coordinates, ",");
+                    x2          = Float.parseFloat(coordST.nextToken());
+                    y2          = Float.parseFloat(coordST.nextToken());
+                    
+                    coordinates = st.nextToken();
+                    coordST     = new StringTokenizer(coordinates, ",");
+                    x3          = Float.parseFloat(coordST.nextToken());
+                    y3          = Float.parseFloat(coordST.nextToken());
+                    
+                    path.curveTo(x1, y1, x2, y2, x3, y3);
+                    
+                    //set x1 and y1 to the end point of the curve this may be
+                    //used for horizontal and vertical line to
+                    x = x3;
+                    y = y3;                    
                 } else if (token.equals("h")) {
                     //relitive horizontal line to
                     coordinates = st.nextToken();
-                    x1          = x1 + Float.parseFloat(coordinates); 
+                    x1          = x + Float.parseFloat(coordinates); 
                     
-                    path.lineTo(x1, y1);
+                    path.lineTo(x1, y);
+                    
+                    //set the current point for future relitive moves
+                    x = x1;
+                } else if (token.equals("H")) {
+                    //absolute horizontal line to
+                    coordinates = st.nextToken();
+                    x1          = Float.parseFloat(coordinates); 
+                    
+                    path.lineTo(x1, y);
+                    
+                    //set the current point for future relitive moves
+                    x = x1;                    
                 } else if (token.equals("l")) {  
-                    //line to
+                    //relitive line to
                     coordinates = st.nextToken();
                     coordST     = new StringTokenizer(coordinates, ",");
-                    x1          = x1 + Float.parseFloat(coordST.nextToken());
-                    y1          = y1 + Float.parseFloat(coordST.nextToken());
+                    x1          = x + Float.parseFloat(coordST.nextToken());
+                    y1          = y + Float.parseFloat(coordST.nextToken());
                     
                     path.lineTo(x1, y1);
+                    
+                    //set the current point for future relitive moves
+                    x = x1;
+                    y = y1;
+                } else if (token.equals("L")) {  
+                    //absolute line to
+                    coordinates = st.nextToken();
+                    coordST     = new StringTokenizer(coordinates, ",");
+                    x1          = Float.parseFloat(coordST.nextToken());
+                    y1          = Float.parseFloat(coordST.nextToken());
+                    
+                    path.lineTo(x1, y1);
+                    
+                    //set the current point for future relitive moves
+                    x = x1;
+                    y = y1;                    
                 } else if (token.equals("m")) {
                     //relitive move to
                     coordinates = st.nextToken();
                     coordST     = new StringTokenizer(coordinates, ",");
-                    x1          = x1 + Float.parseFloat(coordST.nextToken());
-                    y1          = y1 + Float.parseFloat(coordST.nextToken());
+                    x1          = x + Float.parseFloat(coordST.nextToken());
+                    y1          = y + Float.parseFloat(coordST.nextToken());
                     
                     path.moveTo(x1, y1);
+                    //set the current point for future relitive moves
+                    x = x1;
+                    y = y1;     
+                } else if (token.equals("M")) {
+                    //absolute move to
+                    coordinates = st.nextToken();
+                    coordST     = new StringTokenizer(coordinates, ",");
+                    x1          = Float.parseFloat(coordST.nextToken());
+                    y1          = Float.parseFloat(coordST.nextToken());
+                    
+                    path.moveTo(x1, y1);
+                    //set the current point for future relitive moves
+                    x = x1;
+                    y = y1;                      
                 } else if (token.equals("v")) {
                     //relitive vertical line to
                     coordinates = st.nextToken();
-                    y1          = y1 + Float.parseFloat(coordinates);
+                    y1          = y + Float.parseFloat(coordinates);
                     
-                    path.lineTo(x1, y1);
-                } else if (token.equals("z")) {
+                    path.lineTo(x, y1);
+                    
+                    //set the current point for future relitive moves
+                    y = y1;         
+                } else if (token.equals("V")) {
+                    //absolute vertical line to
+                    coordinates = st.nextToken();
+                    y1          = Float.parseFloat(coordinates);
+                    
+                    path.lineTo(x, y1);
+                    
+                    //set the current point for future relitive moves
+                    y = y1;                       
+                } else if (token.equalsIgnoreCase("z")) {
                     path.closePath();                    
                     imageElement = new SvgImageElement(id, path, eleStyle);
                     break;
